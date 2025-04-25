@@ -14,12 +14,14 @@ import {
     DialogActions,
     TextField,
     Snackbar,
-    Alert
+    Alert,
+    CircularProgress
 } from '@mui/material';
 import { getAllBooks, addBook, updateBook, deleteBook } from '../services/api';
 
 const BookList = () => {
     const [books, setBooks] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
     const [editBook, setEditBook] = useState(null);
     const [formData, setFormData] = useState({
@@ -31,18 +33,23 @@ const BookList = () => {
     const [error, setError] = useState('');
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
+    const fetchBooks = async () => {
+        try {
+            setLoading(true);
+            const data = await getAllBooks();
+            setBooks(data);
+            setError('');
+        } catch (error) {
+            setError(error.message || 'Failed to fetch books');
+            setSnackbar({ open: true, message: error.message || 'Failed to fetch books', severity: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchBooks();
     }, []);
-
-    const fetchBooks = async () => {
-        try {
-            const data = await getAllBooks();
-            setBooks(data);
-        } catch (error) {
-            console.error('Error fetching books:', error);
-        }
-    };
 
     const handleOpen = (book = null) => {
         if (book) {
@@ -74,6 +81,7 @@ const BookList = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            setLoading(true);
             if (editBook) {
                 await updateBook(editBook._id, formData);
                 setSnackbar({ open: true, message: 'Book updated successfully!', severity: 'success' });
@@ -81,30 +89,54 @@ const BookList = () => {
                 await addBook(formData);
                 setSnackbar({ open: true, message: 'Book added successfully!', severity: 'success' });
             }
-            fetchBooks();
+            await fetchBooks();
             handleClose();
         } catch (error) {
             setError(error.message);
             setSnackbar({ open: true, message: error.message, severity: 'error' });
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleDelete = async (id) => {
         try {
+            setLoading(true);
             await deleteBook(id);
             setSnackbar({ open: true, message: 'Book deleted successfully!', severity: 'success' });
-            fetchBooks();
+            await fetchBooks();
         } catch (error) {
-            console.error('Error deleting book:', error);
-            setSnackbar({ open: true, message: error.message, severity: 'error' });
+            setError(error.message);
+            setSnackbar({ open: true, message: error.message || 'Failed to delete book', severity: 'error' });
+        } finally {
+            setLoading(false);
         }
     };
 
+    if (loading && books.length === 0) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+                <CircularProgress />
+            </div>
+        );
+    }
+
     return (
         <div>
-            <Button variant="contained" color="primary" onClick={() => handleOpen()}>
+            <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={() => handleOpen()}
+                disabled={loading}
+            >
                 Add New Book
             </Button>
+
+            {error && (
+                <Alert severity="error" style={{ marginTop: '1rem' }}>
+                    {error}
+                </Alert>
+            )}
 
             <TableContainer component={Paper} style={{ marginTop: '20px' }}>
                 <Table>
@@ -125,8 +157,17 @@ const BookList = () => {
                                 <TableCell>{book.category}</TableCell>
                                 <TableCell>{book.publishedYear}</TableCell>
                                 <TableCell>
-                                    <Button onClick={() => handleOpen(book)}>Edit</Button>
-                                    <Button onClick={() => handleDelete(book._id)} color="error">
+                                    <Button 
+                                        onClick={() => handleOpen(book)}
+                                        disabled={loading}
+                                    >
+                                        Edit
+                                    </Button>
+                                    <Button 
+                                        onClick={() => handleDelete(book._id)} 
+                                        color="error"
+                                        disabled={loading}
+                                    >
                                         Delete
                                     </Button>
                                 </TableCell>
@@ -196,6 +237,7 @@ const BookList = () => {
                 <Alert 
                     onClose={() => setSnackbar({ ...snackbar, open: false })} 
                     severity={snackbar.severity}
+                    variant="filled"
                 >
                     {snackbar.message}
                 </Alert>
