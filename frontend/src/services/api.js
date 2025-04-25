@@ -17,7 +17,9 @@ export const addBook = async (bookData) => {
         const response = await axios.post(API_URL, bookData);
         return response.data;
     } catch (error) {
-        console.error('Error adding book:', error);
+        if (error.response && error.response.status === 409) {
+            throw new Error('A book with this title and author already exists');
+        }
         throw error;
     }
 };

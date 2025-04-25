@@ -12,20 +12,24 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    TextField
+    TextField,
+    Snackbar,
+    Alert
 } from '@mui/material';
 import { getAllBooks, addBook, updateBook, deleteBook } from '../services/api';
 
 const BookList = () => {
     const [books, setBooks] = useState([]);
     const [open, setOpen] = useState(false);
-    const [editMode, setEditMode] = useState(false);
-    const [currentBook, setCurrentBook] = useState({
+    const [editBook, setEditBook] = useState(null);
+    const [formData, setFormData] = useState({
         title: '',
         author: '',
         category: '',
         publishedYear: ''
     });
+    const [error, setError] = useState('');
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
     useEffect(() => {
         fetchBooks();
@@ -42,23 +46,24 @@ const BookList = () => {
 
     const handleOpen = (book = null) => {
         if (book) {
-            setCurrentBook(book);
-            setEditMode(true);
+            setEditBook(book);
+            setFormData(book);
         } else {
-            setCurrentBook({
+            setEditBook(null);
+            setFormData({
                 title: '',
                 author: '',
                 category: '',
                 publishedYear: ''
             });
-            setEditMode(false);
         }
         setOpen(true);
     };
 
     const handleClose = () => {
         setOpen(false);
-        setCurrentBook({
+        setEditBook(null);
+        setFormData({
             title: '',
             author: '',
             category: '',
@@ -66,34 +71,32 @@ const BookList = () => {
         });
     };
 
-    const handleChange = (e) => {
-        setCurrentBook({
-            ...currentBook,
-            [e.target.name]: e.target.value
-        });
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            if (editMode) {
-                await updateBook(currentBook._id, currentBook);
+            if (editBook) {
+                await updateBook(editBook._id, formData);
+                setSnackbar({ open: true, message: 'Book updated successfully!', severity: 'success' });
             } else {
-                await addBook(currentBook);
+                await addBook(formData);
+                setSnackbar({ open: true, message: 'Book added successfully!', severity: 'success' });
             }
             fetchBooks();
             handleClose();
         } catch (error) {
-            console.error('Error saving book:', error);
+            setError(error.message);
+            setSnackbar({ open: true, message: error.message, severity: 'error' });
         }
     };
 
     const handleDelete = async (id) => {
         try {
             await deleteBook(id);
+            setSnackbar({ open: true, message: 'Book deleted successfully!', severity: 'success' });
             fetchBooks();
         } catch (error) {
             console.error('Error deleting book:', error);
+            setSnackbar({ open: true, message: error.message, severity: 'error' });
         }
     };
 
@@ -134,52 +137,71 @@ const BookList = () => {
             </TableContainer>
 
             <Dialog open={open} onClose={handleClose}>
-                <DialogTitle>{editMode ? 'Edit Book' : 'Add New Book'}</DialogTitle>
+                <DialogTitle>{editBook ? 'Edit Book' : 'Add New Book'}</DialogTitle>
                 <DialogContent>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        name="title"
-                        label="Title"
-                        fullWidth
-                        value={currentBook.title}
-                        onChange={handleChange}
-                    />
-                    <TextField
-                        margin="dense"
-                        name="author"
-                        label="Author"
-                        fullWidth
-                        value={currentBook.author}
-                        onChange={handleChange}
-                    />
-                    <TextField
-                        margin="dense"
-                        name="category"
-                        label="Category"
-                        fullWidth
-                        value={currentBook.category}
-                        onChange={handleChange}
-                    />
-                    <TextField
-                        margin="dense"
-                        name="publishedYear"
-                        label="Published Year"
-                        type="number"
-                        fullWidth
-                        value={currentBook.publishedYear}
-                        onChange={handleChange}
-                    />
+                    <form onSubmit={handleSubmit}>
+                        <TextField
+                            autoFocus
+                            margin="dense"
+                            name="title"
+                            label="Title"
+                            fullWidth
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            required
+                        />
+                        <TextField
+                            margin="dense"
+                            name="author"
+                            label="Author"
+                            fullWidth
+                            value={formData.author}
+                            onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                            required
+                        />
+                        <TextField
+                            margin="dense"
+                            name="category"
+                            label="Category"
+                            fullWidth
+                            value={formData.category}
+                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                            required
+                        />
+                        <TextField
+                            margin="dense"
+                            name="publishedYear"
+                            label="Published Year"
+                            type="number"
+                            fullWidth
+                            value={formData.publishedYear}
+                            onChange={(e) => setFormData({ ...formData, publishedYear: e.target.value })}
+                            required
+                        />
+                    </form>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleClose}>Cancel</Button>
                     <Button onClick={handleSubmit} color="primary">
-                        {editMode ? 'Update' : 'Add'}
+                        {editBook ? 'Update' : 'Add'}
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <Snackbar 
+                open={snackbar.open} 
+                autoHideDuration={6000} 
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
+            >
+                <Alert 
+                    onClose={() => setSnackbar({ ...snackbar, open: false })} 
+                    severity={snackbar.severity}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </div>
     );
 };
 
-export default BookList; 
+export default BookList;

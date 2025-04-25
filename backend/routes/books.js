@@ -14,18 +14,36 @@ router.get('/', async (req, res) => {
 
 // Add new book
 router.post('/', async (req, res) => {
-    const book = new Book({
-        title: req.body.title,
-        author: req.body.author,
-        category: req.body.category,
-        publishedYear: req.body.publishedYear
-    });
-
     try {
+        // Check if book already exists
+        const existingBook = await Book.findOne({
+            title: req.body.title,
+            author: req.body.author
+        });
+
+        if (existingBook) {
+            return res.status(409).json({ 
+                message: 'A book with this title and author already exists' 
+            });
+        }
+
+        const book = new Book({
+            title: req.body.title,
+            author: req.body.author,
+            category: req.body.category,
+            publishedYear: req.body.publishedYear
+        });
+
         const newBook = await book.save();
         res.status(201).json(newBook);
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        if (err.code === 11000) {
+            res.status(409).json({ 
+                message: 'A book with this title and author already exists' 
+            });
+        } else {
+            res.status(400).json({ message: err.message });
+        }
     }
 });
 
@@ -84,4 +102,4 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-module.exports = router; 
+module.exports = router;
