@@ -3,15 +3,35 @@ const router = express.Router();
 const Book = require('../models/Book');
 const mongoose = require('mongoose');
 
-// Get all books
+// Get all books with pagination
 router.get('/', async (req, res) => {
     try {
-        const books = await Book.find().sort({ createdAt: -1 });
-        console.log('Books fetched successfully:', books.length);
-        res.json(books);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const books = await Book.find()
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .skip(skip)
+            .maxTimeMS(20000)  // Set maximum execution time to 20 seconds
+            .lean()  // Convert to plain JavaScript objects
+            .exec();
+
+        const total = await Book.countDocuments();
+
+        res.json({
+            books,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            totalBooks: total
+        });
     } catch (err) {
         console.error('Error fetching books:', err);
-        res.status(500).json({ message: 'Error fetching books', error: err.message });
+        res.status(500).json({ 
+            message: 'Error fetching books', 
+            error: err.message 
+        });
     }
 });
 

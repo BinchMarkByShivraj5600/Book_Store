@@ -6,7 +6,7 @@ const API_URL = import.meta.env.VITE_BACKEND_URL
 
 const axiosInstance = axios.create({
     baseURL: API_URL,
-    timeout: 15000,
+    timeout: 30000, // Increased timeout to match backend
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -35,9 +35,9 @@ axiosInstance.interceptors.response.use(
     }
 );
 
-export const getAllBooks = async () => {
+export const getAllBooks = async (page = 1, limit = 10) => {
     try {
-        const response = await axiosInstance.get('');
+        const response = await axiosInstance.get(`?page=${page}&limit=${limit}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching books:', error.message);

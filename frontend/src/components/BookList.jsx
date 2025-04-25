@@ -15,13 +15,14 @@ import {
     TextField,
     Snackbar,
     Alert,
-    CircularProgress
+    Pagination,
+    CircularProgress,
+    Box
 } from '@mui/material';
 import { getAllBooks, addBook, updateBook, deleteBook } from '../services/api';
 
 const BookList = () => {
     const [books, setBooks] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
     const [editBook, setEditBook] = useState(null);
     const [formData, setFormData] = useState({
@@ -30,26 +31,29 @@ const BookList = () => {
         category: '',
         publishedYear: ''
     });
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-    const fetchBooks = async () => {
+    useEffect(() => {
+        fetchBooks(page);
+    }, [page]);
+
+    const fetchBooks = async (currentPage) => {
         try {
             setLoading(true);
-            const data = await getAllBooks();
-            setBooks(data);
-            setError('');
+            const data = await getAllBooks(currentPage);
+            setBooks(data.books);
+            setTotalPages(data.totalPages);
         } catch (error) {
-            setError(error.message || 'Failed to fetch books');
-            setSnackbar({ open: true, message: error.message || 'Failed to fetch books', severity: 'error' });
+            setError(error.message);
+            setSnackbar({ open: true, message: error.message, severity: 'error' });
         } finally {
             setLoading(false);
         }
     };
-
-    useEffect(() => {
-        fetchBooks();
-    }, []);
 
     const handleOpen = (book = null) => {
         if (book) {
@@ -80,8 +84,8 @@ const BookList = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
         try {
-            setLoading(true);
             if (editBook) {
                 await updateBook(editBook._id, formData);
                 setSnackbar({ open: true, message: 'Book updated successfully!', severity: 'success' });
@@ -89,7 +93,7 @@ const BookList = () => {
                 await addBook(formData);
                 setSnackbar({ open: true, message: 'Book added successfully!', severity: 'success' });
             }
-            await fetchBooks();
+            await fetchBooks(page);
             handleClose();
         } catch (error) {
             setError(error.message);
@@ -100,26 +104,22 @@ const BookList = () => {
     };
 
     const handleDelete = async (id) => {
+        setLoading(true);
         try {
-            setLoading(true);
             await deleteBook(id);
             setSnackbar({ open: true, message: 'Book deleted successfully!', severity: 'success' });
-            await fetchBooks();
+            await fetchBooks(page);
         } catch (error) {
             setError(error.message);
-            setSnackbar({ open: true, message: error.message || 'Failed to delete book', severity: 'error' });
+            setSnackbar({ open: true, message: error.message, severity: 'error' });
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading && books.length === 0) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-                <CircularProgress />
-            </div>
-        );
-    }
+    const handlePageChange = (event, value) => {
+        setPage(value);
+    };
 
     return (
         <div>
@@ -131,6 +131,12 @@ const BookList = () => {
             >
                 Add New Book
             </Button>
+
+            {loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', m: 3 }}>
+                    <CircularProgress />
+                </Box>
+            )}
 
             {error && (
                 <Alert severity="error" style={{ marginTop: '1rem' }}>
@@ -176,6 +182,18 @@ const BookList = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            {totalPages > 1 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                    <Pagination 
+                        count={totalPages} 
+                        page={page} 
+                        onChange={handlePageChange}
+                        color="primary"
+                        disabled={loading}
+                    />
+                </Box>
+            )}
 
             <Dialog open={open} onClose={handleClose}>
                 <DialogTitle>{editBook ? 'Edit Book' : 'Add New Book'}</DialogTitle>
