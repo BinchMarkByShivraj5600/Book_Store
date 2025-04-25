@@ -12,27 +12,34 @@ app.use(express.json());
 // MongoDB Connection
 const MONGODB_URL = process.env.MONGODB_URL || 'mongodb+srv://shivarajswami2:atlas@5600@shiva.mnec1fn.mongodb.net/?retryWrites=true&w=majority&appName=shiva';
 
-mongoose.connect(MONGODB_URL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-})
-.then(() => {
-    console.log('Connected to MongoDB Atlas');
-})
-.catch(err => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
-});
+const connectDB = async () => {
+    try {
+        await mongoose.connect(MONGODB_URL, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 30000, // Timeout after 30s instead of 10s
+            socketTimeoutMS: 45000, // Close sockets after 45s
+            maxPoolSize: 10, // Maintain up to 10 socket connections
+            bufferCommands: false, // Disable command buffering
+        });
+        console.log('Connected to MongoDB Atlas');
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+        process.exit(1);
+    }
+};
 
-// Error handling for MongoDB connection
+// Connect to MongoDB
+connectDB();
+
+// Handle connection errors
 mongoose.connection.on('error', err => {
     console.error('MongoDB connection error:', err);
 });
 
 mongoose.connection.on('disconnected', () => {
-    console.log('MongoDB disconnected');
+    console.log('MongoDB disconnected. Attempting to reconnect...');
+    connectDB();
 });
 
 // Routes
