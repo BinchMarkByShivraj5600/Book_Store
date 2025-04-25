@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -10,17 +11,14 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
-const MONGODB_URL = process.env.MONGODB_URL || 'mongodb+srv://shivarajswami2:atlas@5600@shiva.mnec1fn.mongodb.net/?retryWrites=true&w=majority&appName=shiva';
-
 const connectDB = async () => {
     try {
-        await mongoose.connect(MONGODB_URL, {
+        await mongoose.connect(process.env.MONGODB_URL, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 30000, // Timeout after 30s instead of 10s
-            socketTimeoutMS: 45000, // Close sockets after 45s
-            maxPoolSize: 10, // Maintain up to 10 socket connections
-            bufferCommands: false, // Disable command buffering
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 45000,
+            maxPoolSize: 10
         });
         console.log('Connected to MongoDB Atlas');
     } catch (error) {
@@ -39,7 +37,12 @@ mongoose.connection.on('error', err => {
 
 mongoose.connection.on('disconnected', () => {
     console.log('MongoDB disconnected. Attempting to reconnect...');
-    connectDB();
+    setTimeout(connectDB, 5000);
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', dbConnection: mongoose.connection.readyState });
 });
 
 // Routes
@@ -56,6 +59,20 @@ app.use((err, req, res, next) => {
 
 // Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled Promise Rejection:', err);
+    // Close server & exit process
+    server.close(() => process.exit(1));
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    // Close server & exit process
+    server.close(() => process.exit(1));
 });
