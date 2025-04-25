@@ -6,7 +6,10 @@ const bookRoutes = require('./routes/books');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173', 'https://your-frontend-url.onrender.com'],
+    credentials: true
+}));
 app.use(express.json());
 
 // Routes
@@ -24,4 +27,4 @@ mongoose.connect('mongodb://localhost:27017/book_store', {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-}); 
+});
